@@ -35,9 +35,8 @@ jobs:
             build-tools;34.0.0
 
       - name: Accept Android SDK licenses (non-interactive)
-        # ensure we call the cmdline-tools sdkmanager that was installed
         run: |
-          # possible SDK root locations on runner; try both
+          # try common SDK root locations
           if [ -d "/usr/local/lib/android/sdk" ]; then
             export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
           elif [ -n "${ANDROID_SDK_ROOT}" ]; then
