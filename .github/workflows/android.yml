@@ -26,16 +26,6 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*','**/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-cache-${{ runner.os }}-
-
       - name: Install Android SDK packages
         uses: android-actions/setup-android@v3
         with:
@@ -43,6 +33,31 @@ jobs:
             platform-tools
             platforms;android-34
             build-tools;34.0.0
+
+      - name: Accept Android SDK licenses (non-interactive)
+        # ensure we call the cmdline-tools sdkmanager that was installed
+        run: |
+          # possible SDK root locations on runner; try both
+          if [ -d "/usr/local/lib/android/sdk" ]; then
+            export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          elif [ -n "${ANDROID_SDK_ROOT}" ]; then
+            export ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT}
+          else
+            export ANDROID_SDK_ROOT=$HOME/Android/Sdk
+          fi
+          echo "Using ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          SDKMAN="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMAN" ] && [ -x "$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager" ]; then
+            SDKMAN="$ANDROID_SDK_ROOT/cmdline-tools/bin/sdkmanager"
+          fi
+          echo "sdkmanager path: $SDKMAN"
+          if [ -x "$SDKMAN" ]; then
+            yes | "$SDKMAN" --sdk_root="$ANDROID_SDK_ROOT" --licenses
+          else
+            echo "ERROR: sdkmanager not found at expected location. Listing $ANDROID_SDK_ROOT:"
+            ls -la "$ANDROID_SDK_ROOT" || true
+            exit 1
+          fi
 
       - name: Make gradlew executable (if present)
         run: if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
