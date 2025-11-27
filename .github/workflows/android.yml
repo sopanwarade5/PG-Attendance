@@ -7,10 +7,18 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Show repo files (debug)
+        run: |
+          echo "=== repo root ==="
+          ls -la
+          echo "=== app folder ==="
+          ls -la app || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -18,7 +26,17 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Android SDK (new method)
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-cache-${{ runner.os }}-${{ hashFiles('**/*.gradle*','**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-cache-${{ runner.os }}-
+
+      - name: Install Android SDK packages
         uses: android-actions/setup-android@v3
         with:
           packages: |
@@ -26,11 +44,16 @@ jobs:
             platforms;android-34
             build-tools;34.0.0
 
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
+      - name: Make gradlew executable (if present)
+        run: if [ -f ./gradlew ]; then chmod +x ./gradlew; fi
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --info
+      - name: Build Debug APK (verbose)
+        run: |
+          if [ -f ./gradlew ]; then
+            ./gradlew assembleDebug --no-daemon --stacktrace --info
+          else
+            gradle assembleDebug --no-daemon --stacktrace --info
+          fi
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
